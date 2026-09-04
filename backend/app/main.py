@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.metrics import router as metrics_router
 from app.db import async_session, init_db
 from app.seed_mock import seed_if_empty
+from app.sync_github import sync_github_metric
 
 load_dotenv()
 
@@ -24,7 +25,17 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     await init_db()
     async with async_session() as session:
-        await seed_if_empty(session)
+        github_token = os.getenv("GITHUB_TOKEN")
+        github_login = os.getenv("GITHUB_LOGIN")
+        if github_token and github_login:
+            try:
+                await sync_github_metric(session, github_login, github_token)
+            except Exception:
+                logger.exception("GitHub sync failed at startup, falling back to mock data")
+                await session.rollback()
+                await seed_if_empty(session)
+        else:
+            await seed_if_empty(session)
     logger.info("Habit Heatmap Dashboard API started")
     yield
 
