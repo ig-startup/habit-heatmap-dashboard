@@ -15,7 +15,7 @@
     <string>__AGENT_DIR__</string>
 
     <key>StartInterval</key>
-    <integer>900</integer>
+    <integer>43200</integer>
 
     <key>RunAtLoad</key>
     <true/>
