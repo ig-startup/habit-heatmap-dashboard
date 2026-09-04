@@ -43,6 +43,12 @@ class MetricEventCreate(BaseModel):
     meta: dict = Field(default_factory=dict)
 
 
+class MetricIngest(BaseModel):
+    date: date
+    value: float
+    meta: dict = Field(default_factory=dict)
+
+
 class MetricEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -25,6 +25,20 @@ async def get_metric(session: AsyncSession, metric_id: int) -> Metric | None:
     return await session.get(Metric, metric_id)
 
 
+async def get_or_create_metric_by_slug(session: AsyncSession, slug: str, defaults: dict) -> Metric:
+    """Find a webhook-sourced metric by its meta.slug, creating it on first ingest."""
+    result = await session.execute(select(Metric).where(Metric.source_type == "webhook"))
+    for metric in result.scalars().all():
+        if metric.meta.get("slug") == slug:
+            return metric
+
+    metric = Metric(source_type="webhook", meta={"slug": slug}, **defaults)
+    session.add(metric)
+    await session.commit()
+    await session.refresh(metric)
+    return metric
+
+
 async def upsert_event(session: AsyncSession, metric_id: int, data: MetricEventCreate) -> MetricEvent:
     result = await session.execute(
         select(MetricEvent).where(MetricEvent.metric_id == metric_id, MetricEvent.date == data.date)

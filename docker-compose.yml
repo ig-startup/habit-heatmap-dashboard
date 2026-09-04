@@ -19,6 +19,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://habits:${POSTGRES_PASSWORD:-habits}@db:5432/habits
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_LOGIN: ${GITHUB_LOGIN:-}
+      INGEST_TOKEN: ${INGEST_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy

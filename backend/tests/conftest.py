@@ -5,6 +5,9 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 # .env and triggering a live GitHub sync during tests.
 os.environ["GITHUB_TOKEN"] = ""
 os.environ["GITHUB_LOGIN"] = ""
+# Fixed test value so tests can exercise the ingest auth check deterministically,
+# instead of picking up the real secret from the repo-root .env.
+os.environ["INGEST_TOKEN"] = "test-ingest-token"
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
