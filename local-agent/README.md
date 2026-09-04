@@ -20,18 +20,28 @@ INGEST_TOKEN=...                        # тот же секрет, что и в
 OBSIDIAN_ARTICLES_PATH=/Users/.../Статьи
 ```
 
-## Full Disk Access (обязательно для YouTube-коллектора)
+## YouTube-коллектор — отложен (нужен Full Disk Access)
 
-`knowledgeC.db` (источник macOS Screen Time) защищён TCC — без доступа
-sqlite3 вернёт `authorization denied`. Нужно дать Full Disk Access:
+`YOUTUBE_COLLECTOR_ENABLED=false` по умолчанию — коллектор не запускается.
+Причина: `knowledgeC.db` (источник macOS Screen Time) защищён TCC, доступ
+открывается только через **Full Disk Access**, а это не узкое разрешение
+«только на этот файл» — это доступ ко всему, что TCC защищает на диске
+(Mail, Messages, история Safari, контейнеры других приложений и т.д.), причём
+выдаётся он **конкретному бинарнику интерпретатора** (`local-agent/.venv/bin/python3.13`,
+который обычно является symlink на системный python), а не только этому
+скрипту. Если тот же системный python используется другими venv/проектами —
+они тоже получат FDA.
 
-1. System Settings → Privacy & Security → Full Disk Access
-2. Добавить бинарник Python, которым запускается агент — `local-agent/.venv/bin/python3.13`
-   (точный путь можно узнать: `local-agent/.venv/bin/python3 -c "import sys; print(sys.executable)"`)
-3. Перезапустить агент
+Когда решите включать:
+1. Рассмотреть выделенный python-интерпретатор только для `local-agent`
+   (например через `pyenv`), чтобы FDA не расползался на другие проекты
+2. System Settings → Privacy & Security → Full Disk Access → добавить бинарник
+   (точный путь: `local-agent/.venv/bin/python3 -c "import sys; print(sys.executable)"`)
+3. В `.env` выставить `YOUTUBE_COLLECTOR_ENABLED=true`
+4. Перезапустить агент
 
-Без этого доступа Obsidian-часть агента продолжит работать нормально —
-упадёт только YouTube-коллектор (ошибка логируется, не крашит процесс).
+Пока выключено, Obsidian-часть агента работает независимо и не требует
+никаких дополнительных разрешений.
 
 ## Ручной запуск (для проверки)
 

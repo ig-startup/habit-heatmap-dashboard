@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 INGEST_TOKEN = os.getenv("INGEST_TOKEN")
 OBSIDIAN_ARTICLES_PATH = os.getenv("OBSIDIAN_ARTICLES_PATH", "")
+# Off by default: reading knowledgeC.db needs Full Disk Access, a broad TCC grant
+# to the whole python3 binary (not just this script) — deferred pending a safer
+# setup (dedicated interpreter). See local-agent/README.md.
+YOUTUBE_COLLECTOR_ENABLED = os.getenv("YOUTUBE_COLLECTOR_ENABLED", "false").lower() == "true"
 STATE_PATH = Path(__file__).resolve().parent / "state" / "obsidian.json"
 
 
@@ -51,6 +55,10 @@ def run_once() -> None:
         _ingest("obsidian", words)
     else:
         logger.error("OBSIDIAN_ARTICLES_PATH not set or missing: %s", OBSIDIAN_ARTICLES_PATH)
+
+    if not YOUTUBE_COLLECTOR_ENABLED:
+        logger.info("YouTube collector disabled (YOUTUBE_COLLECTOR_ENABLED=false) — skipping")
+        return
 
     try:
         seconds = collect_youtube_seconds_today()
