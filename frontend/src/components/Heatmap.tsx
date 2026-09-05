@@ -37,6 +37,8 @@ function withOpacity(hex: string, opacity: number): string {
 }
 
 export default function Heatmap({ year, events, color }: Props) {
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
   const { weeks, monthPositions, maxValue } = useMemo(() => {
     const valueByDate = new Map(events.map((e) => [e.date, e.value]));
     const start = new Date(Date.UTC(year, 0, 1));
@@ -84,7 +86,13 @@ export default function Heatmap({ year, events, color }: Props) {
   const height = 7 * STEP + 16;
 
   return (
-    <svg width={width} height={height} role="img" aria-label={`Активность за ${year} год`}>
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width="100%"
+      style={{ maxWidth: width, height: "auto", display: "block" }}
+      role="img"
+      aria-label={`Активность за ${year} год`}
+    >
       {monthPositions.map((m) => (
         <text
           key={`${m.label}-${m.weekIndex}`}
@@ -101,6 +109,7 @@ export default function Heatmap({ year, events, color }: Props) {
         week.map((day, di) => {
           if (!day.inYear) return null;
           const level = intensityLevel(day.value, maxValue);
+          const isToday = day.date === today;
           return (
             <rect
               key={day.date}
@@ -110,6 +119,8 @@ export default function Heatmap({ year, events, color }: Props) {
               height={CELL}
               rx={2}
               fill={levelColor(level, color)}
+              stroke={isToday ? "#e6edf3" : "none"}
+              strokeWidth={isToday ? 1.5 : 0}
             >
               <title>{`${day.date}: ${day.value}`}</title>
             </rect>
