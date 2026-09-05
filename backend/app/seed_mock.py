@@ -17,7 +17,7 @@ async def seed_if_empty(session: AsyncSession) -> None:
         return
 
     metric = Metric(
-        name="GitHub — я",
+        name="Активность с ИИ",
         icon="🐙",
         color="#3fb950",
         unit="count",

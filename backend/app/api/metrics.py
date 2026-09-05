@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/metrics", tags=["metrics"])
 
 # Local-agent ingest sources (see ТЗ §2.2/2.3) — metrics are created lazily on first ingest.
 INGEST_METRIC_DEFAULTS = {
-    "obsidian": {"name": "Статьи в Obsidian", "icon": "📝", "color": "#a970ff", "unit": "count", "aggregation": "sum"},
+    "obsidian": {"name": "Активность со статьями", "icon": "📝", "color": "#a970ff", "unit": "count", "aggregation": "sum"},
     "youtube": {"name": "YouTube", "icon": "📺", "color": "#ff4d4f", "unit": "duration", "aggregation": "sum"},
 }
 

@@ -19,7 +19,7 @@ async def _get_or_create_github_metric(session: AsyncSession, login: str) -> Met
         return metric
 
     metric = Metric(
-        name=f"GitHub — {login}",
+        name="Активность с ИИ",
         icon="🐙",
         color="#3fb950",
         unit="count",

@@ -46,7 +46,7 @@ async def test_ingest_creates_metric_lazily_and_upserts(client):
 
     metrics = (await client.get("/api/metrics")).json()
     assert len(metrics) == 1
-    assert metrics[0]["name"] == "Статьи в Obsidian"
+    assert metrics[0]["name"] == "Активность со статьями"
     assert metrics[0]["today_value"] == 350.0
 
     # second ingest for the same day replaces the value (agent re-sends the day's running total)
@@ -75,4 +75,4 @@ async def test_ingest_youtube_and_obsidian_are_separate_metrics(client):
         headers={"X-Ingest-Token": TOKEN},
     )
     metrics = (await client.get("/api/metrics")).json()
-    assert {m["name"] for m in metrics} == {"Статьи в Obsidian", "YouTube"}
+    assert {m["name"] for m in metrics} == {"Активность со статьями", "YouTube"}
