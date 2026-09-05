@@ -21,7 +21,7 @@
   (`source_type=webhook`, `meta.slug`). Защищён shared-secret заголовком
   `X-Ingest-Token` (`INGEST_TOKEN` в `.env`) — обязателен всегда, без токена
   ingest недоступен (fail-closed).
-- Данные шлёт локальный агент-демон на Mac (`local-agent/`, launchd, каждые 12 часов):
+- Данные шлёт локальный агент-демон на Mac (`local-agent/`, launchd, каждые 3 часа):
   Obsidian — word-count дельта по папке `Статьи` (не весь vault); YouTube — время
   на youtube.com из `knowledgeC.db` (macOS Screen Time), требует Full Disk Access.
   iPhone-часть через `aw-import-screentime` — не сделана (см. `local-agent/README.md`).

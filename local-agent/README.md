@@ -49,7 +49,7 @@ OBSIDIAN_ARTICLES_PATH=/Users/.../Статьи
 .venv/bin/python3 agent.py
 ```
 
-## Автозапуск по расписанию (launchd, каждые 12 часов)
+## Автозапуск по расписанию (launchd, каждые 3 часа)
 
 ```bash
 ./launchd/install.sh
