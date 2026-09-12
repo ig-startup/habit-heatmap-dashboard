@@ -1,5 +1,5 @@
 #!/bin/bash
-# Registers the habit-heatmap local agent as a launchd job (runs every 3 hours).
+# Registers the habit-heatmap local agent as a launchd job (runs every 2 hours).
 set -euo pipefail
 
 AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,4 +18,4 @@ launchctl load "$DEST"
 
 echo "Installed and loaded $DEST"
 echo "Logs: $AGENT_DIR/logs/agent.log"
-echo "Runs every 3 hours + once now. To stop: launchctl unload $DEST"
+echo "Runs every 2 hours + once now. To stop: launchctl unload $DEST"
