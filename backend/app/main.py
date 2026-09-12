@@ -1,4 +1,6 @@
 """Habit Heatmap Dashboard — FastAPI app."""
+import asyncio
+import contextlib
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -20,13 +22,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+GITHUB_SYNC_INTERVAL_SECONDS = int(os.getenv("GITHUB_SYNC_INTERVAL_SECONDS", 3 * 3600))
+
+
+async def _github_sync_loop(login: str, token: str) -> None:
+    """Re-sync GitHub contributions on a fixed interval for the lifetime of the process.
+
+    The container only restarts on deploy/crash (restart: unless-stopped), so without
+    this loop the startup-only sync in `lifespan` goes stale after the first deploy.
+    """
+    while True:
+        await asyncio.sleep(GITHUB_SYNC_INTERVAL_SECONDS)
+        try:
+            async with async_session() as session:
+                await sync_github_metric(session, login, token)
+        except Exception:
+            logger.exception("Periodic GitHub sync failed")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    github_token = os.getenv("GITHUB_TOKEN")
+    github_login = os.getenv("GITHUB_LOGIN")
     async with async_session() as session:
-        github_token = os.getenv("GITHUB_TOKEN")
-        github_login = os.getenv("GITHUB_LOGIN")
         if github_token and github_login:
             try:
                 await sync_github_metric(session, github_login, github_token)
@@ -36,8 +55,18 @@ async def lifespan(app: FastAPI):
                 await seed_if_empty(session)
         else:
             await seed_if_empty(session)
+
+    sync_task = None
+    if github_token and github_login:
+        sync_task = asyncio.create_task(_github_sync_loop(github_login, github_token))
+
     logger.info("Habit Heatmap Dashboard API started")
     yield
+
+    if sync_task:
+        sync_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sync_task
 
 
 app = FastAPI(title="Habit Heatmap Dashboard API", lifespan=lifespan)
