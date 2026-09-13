@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/metrics", tags=["metrics"])
 INGEST_METRIC_DEFAULTS = {
     "obsidian": {"name": "Активность со статьями", "icon": "📝", "color": "#a970ff", "unit": "count", "aggregation": "sum"},
     "youtube": {"name": "YouTube", "icon": "📺", "color": "#ff4d4f", "unit": "duration", "aggregation": "sum"},
+    "telegram": {"name": "Telegram-канал", "icon": "✈️", "color": "#2AABEE", "unit": "count", "aggregation": "sum"},
 }
 
 
