@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import type { MetricEvent } from "../api";
+import { CELL, STEP } from "./gridConstants";
 
 interface Props {
   year: number;
@@ -9,9 +10,6 @@ interface Props {
 }
 
 const MONTH_LABELS = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
-const CELL = 11;
-const GAP = 3;
-const STEP = CELL + GAP;
 
 function intensityLevel(value: number, max: number): number {
   if (value <= 0 || max <= 0) return 0;

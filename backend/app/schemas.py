@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 Unit = Literal["count", "duration", "boolean"]
 Aggregation = Literal["sum", "max", "last"]
-SourceType = Literal["github", "webhook", "manual"]
+SourceType = Literal["github", "metrika", "webhook", "manual"]
 
 
 class MetricCreate(BaseModel):

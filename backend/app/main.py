@@ -13,6 +13,7 @@ from app.api.metrics import router as metrics_router
 from app.db import async_session, init_db
 from app.seed_mock import seed_if_empty
 from app.sync_github import sync_github_metric
+from app.sync_metrika import sync_metrika_metric
 
 load_dotenv()
 
@@ -23,6 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 GITHUB_SYNC_INTERVAL_SECONDS = int(os.getenv("GITHUB_SYNC_INTERVAL_SECONDS", 3 * 3600))
+METRIKA_SYNC_INTERVAL_SECONDS = int(os.getenv("METRIKA_SYNC_INTERVAL_SECONDS", 3600))
 
 
 async def _github_sync_loop(login: str, token: str) -> None:
@@ -38,6 +40,17 @@ async def _github_sync_loop(login: str, token: str) -> None:
                 await sync_github_metric(session, login, token)
         except Exception:
             logger.exception("Periodic GitHub sync failed")
+
+
+async def _metrika_sync_loop(counter_id: str, token: str) -> None:
+    """Re-sync Yandex Metrika visits on a fixed interval for the lifetime of the process."""
+    while True:
+        await asyncio.sleep(METRIKA_SYNC_INTERVAL_SECONDS)
+        try:
+            async with async_session() as session:
+                await sync_metrika_metric(session, counter_id, token)
+        except Exception:
+            logger.exception("Periodic Yandex Metrika sync failed")
 
 
 @asynccontextmanager
@@ -56,17 +69,29 @@ async def lifespan(app: FastAPI):
         else:
             await seed_if_empty(session)
 
-    sync_task = None
+    metrika_token = os.getenv("YANDEX_METRIKA_TOKEN")
+    metrika_counter_id = os.getenv("YANDEX_METRIKA_COUNTER_ID")
+    if metrika_token and metrika_counter_id:
+        async with async_session() as session:
+            try:
+                await sync_metrika_metric(session, metrika_counter_id, metrika_token)
+            except Exception:
+                logger.exception("Yandex Metrika sync failed at startup")
+                await session.rollback()
+
+    sync_tasks = []
     if github_token and github_login:
-        sync_task = asyncio.create_task(_github_sync_loop(github_login, github_token))
+        sync_tasks.append(asyncio.create_task(_github_sync_loop(github_login, github_token)))
+    if metrika_token and metrika_counter_id:
+        sync_tasks.append(asyncio.create_task(_metrika_sync_loop(metrika_counter_id, metrika_token)))
 
     logger.info("Habit Heatmap Dashboard API started")
     yield
 
-    if sync_task:
-        sync_task.cancel()
+    for task in sync_tasks:
+        task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
-            await sync_task
+            await task
 
 
 app = FastAPI(title="Habit Heatmap Dashboard API", lifespan=lifespan)

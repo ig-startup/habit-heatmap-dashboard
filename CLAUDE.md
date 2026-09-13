@@ -31,6 +31,20 @@
   разовый `local-agent/backfill_telegram.py` проходом по `?before=` пагинации.
   Значение за день = число постов (каждое сообщение, включая репосты/альбомы,
   считается отдельно). Работает только для публичных каналов.
+- Milestone 4 (Yandex Metrika — посетители сайта): бэкенд-синк
+  `backend/app/sync_metrika.py` + `backend/app/services/yandex_metrika.py`,
+  по образцу GitHub (`GET stat/v1/data`, `dimensions=ym:s:date`,
+  `metrics=ym:s:visits`, `Authorization: OAuth <token>`), периодический ресинк
+  каждый час (`METRIKA_SYNC_INTERVAL_SECONDS`). Нужны `YANDEX_METRIKA_TOKEN`
+  и `YANDEX_METRIKA_COUNTER_ID` в `.env` — без обоих синк просто выключен
+  (мок-фолбэка нет, в отличие от GitHub). Метрика создаётся один раз при
+  первом успешном синке (`source_type=metrika`).
+  Визуализация — не обычный Yearly-хитмап, а отдельный компонент
+  `frontend/src/components/GrowthStaircase.tsx` в духе графика трат Apple
+  Card: по дням внутри каждого месяца — накопительная сумма, высота
+  столбика нормирована на максимальный месячный тотал по всем месяцам в
+  окне, подпись тотала над пиком месяца, последний день подсвечен.
+  `HeatmapCard` выбирает компонент по `metric.source_type === "metrika"`.
 
 ## Структура
 

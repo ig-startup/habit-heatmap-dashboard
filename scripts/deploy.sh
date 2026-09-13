@@ -9,14 +9,21 @@ set -a; source .env; set +a
 
 REMOTE_DIR=/opt/habit-heatmap-dashboard
 
-sshpass -p "$SERVER_PASSWORD" rsync -az --delete \
+# Uses SSH key auth (see ~/.ssh/id_ed25519) if set up; falls back to sshpass with
+# SERVER_PASSWORD when no key is authorized on the server yet.
+SSH_CMD="ssh -o StrictHostKeyChecking=no"
+if ! ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" true 2>/dev/null; then
+  SSH_CMD="sshpass -p $SERVER_PASSWORD ssh -o StrictHostKeyChecking=no"
+fi
+
+rsync -az --delete \
   --exclude='.git' --exclude='node_modules' --exclude='.venv' --exclude='local-agent' \
   --exclude='dist' --exclude='__pycache__' --exclude='*.pyc' \
   --exclude='.env' \
-  -e "ssh -o StrictHostKeyChecking=no" \
+  -e "$SSH_CMD" \
   ./ "$SERVER_USER@$SERVER_IP:$REMOTE_DIR/"
 
-sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
+$SSH_CMD "$SERVER_USER@$SERVER_IP" \
   "cd $REMOTE_DIR && docker compose up -d --build"
 
 echo "Deployed. Checking https://fin.garaev.tech/api/metrics ..."

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { fetchHeatmap, type MetricEvent, type MetricWithStats } from "../api";
+import GrowthStaircase from "./GrowthStaircase";
 import Heatmap from "./Heatmap";
 
 export default function HeatmapCard({ metric }: { metric: MetricWithStats }) {
@@ -32,6 +33,8 @@ export default function HeatmapCard({ metric }: { metric: MetricWithStats }) {
 
       {loading ? (
         <div className="h-24 flex items-center text-muted text-xs font-mono">загрузка...</div>
+      ) : metric.source_type === "metrika" ? (
+        <GrowthStaircase year={year} events={events} color={metric.color} />
       ) : (
         <Heatmap year={year} events={events} color={metric.color} />
       )}
