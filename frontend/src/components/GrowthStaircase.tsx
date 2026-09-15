@@ -6,86 +6,57 @@ import { CELL, STEP, weeksInYear } from "./gridConstants";
 interface Props {
   year: number;
   events: MetricEvent[];
-  color: string;
 }
 
 const MONTH_LABELS = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
-const HIGHLIGHT = "#ff5a36";
-const EMPTY = "#21262d";
-const ROWS = 14;
-const LABEL_HEIGHT = 14;
-
-function hexToRgb(hex: string): [number, number, number] {
-  const clean = hex.replace("#", "");
-  return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)];
-}
-
-function withOpacity(hex: string, opacity: number): string {
-  const [r, g, b] = hexToRgb(hex);
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-}
-
-function lerpColor(from: string, to: string, t: number): string {
-  const [r1, g1, b1] = hexToRgb(from);
-  const [r2, g2, b2] = hexToRgb(to);
-  const r = Math.round(r1 + (r2 - r1) * t);
-  const g = Math.round(g1 + (g2 - g1) * t);
-  const b = Math.round(b1 + (b2 - b1) * t);
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
-function cellColor(color: string, combined: number): string {
-  if (combined >= 0.85) {
-    return lerpColor(color, HIGHLIGHT, (combined - 0.85) / 0.15);
-  }
-  const opacity = 0.25 + 0.75 * combined;
-  return withOpacity(color, opacity);
-}
+const DARK_BG = "#21262d";
+const LIGHT_GRAY = "#454c54";
+const ORANGE = "#ff5a36";
+const ROWS = 7;
+const LABEL_HEIGHT = 16;
 
 /**
  * Same total column count as the Yearly heatmap (`weeksInYear`) so cards line up in width.
- * The most recent tracked day is pinned to the rightmost column; if there isn't enough
- * history yet the leftover columns on the left stay blank, and once there's more history
- * than fits, older days fall off the left edge.
+ * Each column is one day: the light-gray bar is that day's trailing 7-day max (rolling
+ * window), the orange bar on top of it is the day's actual value. Both are scaled against
+ * the highest 7-day max in the visible window, so the tallest recent week reaches full height.
  */
-export default function GrowthStaircase({ year, events, color }: Props) {
-  const { visibleDays, months, maxTotal, columns } = useMemo(() => {
+export default function GrowthStaircase({ year, events }: Props) {
+  const { visibleDays, months, maxScale, columns } = useMemo(() => {
     const columns = weeksInYear(year);
+    const valueByDate = new Map(events.map((e) => [e.date, e.value]));
     const sorted = [...events].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     const visible = sorted.slice(-columns);
     const blanks = columns - visible.length;
 
-    let runningCum = 0;
-    let currentMonth = "";
-    const cum: number[] = [];
-    const monthsMap = new Map<string, { label: string; lastIndex: number; total: number }>();
-
-    visible.forEach((e, i) => {
+    const withWeekMax = visible.map((e) => {
       const d = new Date(`${e.date}T00:00:00Z`);
-      const monthKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
-      if (monthKey !== currentMonth) {
-        runningCum = 0;
-        currentMonth = monthKey;
+      let weekMax = 0;
+      for (let i = 0; i < 7; i++) {
+        const dd = new Date(d);
+        dd.setUTCDate(dd.getUTCDate() - i);
+        const iso = dd.toISOString().slice(0, 10);
+        const v = valueByDate.get(iso) ?? 0;
+        if (v > weekMax) weekMax = v;
       }
-      runningCum += e.value;
-      cum.push(runningCum);
+      return { date: e.date, value: e.value, weekMax };
+    });
 
-      const columnIndex = blanks + i;
-      const existing = monthsMap.get(monthKey);
-      if (existing) {
-        existing.lastIndex = columnIndex;
-        existing.total = runningCum;
-      } else {
-        monthsMap.set(monthKey, { label: MONTH_LABELS[d.getUTCMonth()], lastIndex: columnIndex, total: runningCum });
+    const maxScale = Math.max(0, ...withWeekMax.map((d) => d.weekMax));
+
+    const monthsMap = new Map<string, { label: string; weekIndex: number }>();
+    withWeekMax.forEach((d, i) => {
+      const dt = new Date(`${d.date}T00:00:00Z`);
+      const monthKey = `${dt.getUTCFullYear()}-${dt.getUTCMonth()}`;
+      if (!monthsMap.has(monthKey)) {
+        monthsMap.set(monthKey, { label: MONTH_LABELS[dt.getUTCMonth()], weekIndex: blanks + i });
       }
     });
 
-    const max = Math.max(0, ...Array.from(monthsMap.values()).map((m) => m.total));
-
     return {
-      visibleDays: visible.map((e, i) => ({ date: e.date, value: e.value, cum: cum[i], columnIndex: blanks + i })),
+      visibleDays: withWeekMax.map((d, i) => ({ ...d, columnIndex: blanks + i })),
       months: Array.from(monthsMap.values()),
-      maxTotal: max,
+      maxScale,
       columns,
     };
   }, [events, year]);
@@ -94,11 +65,9 @@ export default function GrowthStaircase({ year, events, color }: Props) {
   const height = LABEL_HEIGHT + ROWS * STEP;
   const numberFmt = useMemo(() => new Intl.NumberFormat("ru-RU"), []);
 
-  if (maxTotal <= 0) {
+  if (maxScale <= 0) {
     return <p className="text-xs text-muted font-mono h-24 flex items-center">пока нет данных</p>;
   }
-
-  const lastColumnIndex = visibleDays[visibleDays.length - 1]?.columnIndex ?? -1;
 
   return (
     <svg
@@ -106,66 +75,34 @@ export default function GrowthStaircase({ year, events, color }: Props) {
       width="100%"
       style={{ maxWidth: width, height: "auto", display: "block" }}
       role="img"
-      aria-label="Рост посетителей по месяцам"
+      aria-label="Посетители сайта: сегодня против максимума за неделю"
     >
+      {months.map((m) => (
+        <text
+          key={`${m.label}-${m.weekIndex}`}
+          x={m.weekIndex * STEP}
+          y={10}
+          fontSize={10}
+          fill="#7d8590"
+          fontFamily="Space Mono, monospace"
+        >
+          {m.label}
+        </text>
+      ))}
       {visibleDays.map((day) => {
-        const filled = Math.min(ROWS, Math.round((day.cum / maxTotal) * ROWS));
-        const colFactor = filled / ROWS;
-        const isLastDay = day.columnIndex === lastColumnIndex;
+        const grayFilled = Math.min(ROWS, Math.round((day.weekMax / maxScale) * ROWS));
+        const orangeFilled = Math.min(ROWS, Math.round((day.value / maxScale) * ROWS));
         const cells = [];
         for (let r = 0; r < ROWS; r++) {
-          if (r >= filled) {
-            cells.push(
-              <rect
-                key={`bg-${r}`}
-                x={day.columnIndex * STEP}
-                y={LABEL_HEIGHT + ROWS * STEP - (r + 1) * STEP}
-                width={CELL}
-                height={CELL}
-                rx={2}
-                fill={EMPTY}
-              />
-            );
-          }
-        }
-        for (let r = 0; r < filled; r++) {
-          const rowRatio = (r + 1) / filled;
-          const combined = Math.min(1, colFactor * 0.4 + rowRatio * 0.6);
-          const isTip = isLastDay && r === filled - 1;
+          const fill = r < orangeFilled ? ORANGE : r < grayFilled ? LIGHT_GRAY : DARK_BG;
           const y = LABEL_HEIGHT + ROWS * STEP - (r + 1) * STEP;
           cells.push(
-            <rect
-              key={r}
-              x={day.columnIndex * STEP}
-              y={y}
-              width={CELL}
-              height={CELL}
-              rx={2}
-              fill={isTip ? HIGHLIGHT : cellColor(color, combined)}
-            >
-              <title>{`${day.date}: ${numberFmt.format(day.value)} (накоп. за месяц: ${numberFmt.format(day.cum)})`}</title>
+            <rect key={r} x={day.columnIndex * STEP} y={y} width={CELL} height={CELL} rx={2} fill={fill}>
+              <title>{`${day.date}: ${numberFmt.format(day.value)} (макс. за неделю: ${numberFmt.format(day.weekMax)})`}</title>
             </rect>
           );
         }
         return <g key={day.date}>{cells}</g>;
-      })}
-      {months.map((m) => {
-        const filled = Math.min(ROWS, Math.round((m.total / maxTotal) * ROWS));
-        const peakY = LABEL_HEIGHT + ROWS * STEP - filled * STEP;
-        const labelX = (m.lastIndex + 1) * STEP;
-        return (
-          <text
-            key={m.label + m.lastIndex}
-            x={labelX}
-            y={Math.max(9, peakY - 3)}
-            fontSize={9}
-            textAnchor="end"
-            fill="#7d8590"
-            fontFamily="Space Mono, monospace"
-          >
-            {`${m.label}: ${numberFmt.format(m.total)}`}
-          </text>
-        );
       })}
     </svg>
   );

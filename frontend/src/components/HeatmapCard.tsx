@@ -34,7 +34,7 @@ export default function HeatmapCard({ metric }: { metric: MetricWithStats }) {
       {loading ? (
         <div className="h-24 flex items-center text-muted text-xs font-mono">загрузка...</div>
       ) : metric.source_type === "metrika" ? (
-        <GrowthStaircase year={year} events={events} color={metric.color} />
+        <GrowthStaircase year={year} events={events} />
       ) : (
         <Heatmap year={year} events={events} color={metric.color} />
       )}
