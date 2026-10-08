@@ -1,27 +1,32 @@
 import { useMemo } from "react";
 
 import type { MetricEvent } from "../api";
-import { CELL, STEP, weeksInYear } from "./gridConstants";
+import { CELL, GAP, STEP, weeksInYear } from "./gridConstants";
 
 interface Props {
   year: number;
   events: MetricEvent[];
+  label: string;
 }
 
 const MONTH_LABELS = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
 const DARK_BG = "#21262d";
 const LIGHT_GRAY = "#454c54";
 const ORANGE = "#ff5a36";
-const ROWS = 7;
+const ROWS = 10;
 const LABEL_HEIGHT = 16;
+/** Extra space reserved on the left, inside the viewBox, for the 0/max scale labels. */
+const AXIS_GUTTER = 30;
 
 /**
- * Same total column count as the Yearly heatmap (`weeksInYear`) so cards line up in width.
- * Each column is one day: the light-gray bar is that day's trailing 7-day max (rolling
- * window), the orange bar on top of it is the day's actual value. Both are scaled against
- * the highest 7-day max in the visible window, so the tallest recent week reaches full height.
+ * Apple-Card-style daily bar chart, used for any metric that's a single daily reading
+ * (visits, wallet balance) rather than a count of discrete events. Same total column
+ * count as the Yearly heatmap (`weeksInYear`) so cards line up in width. Each column is
+ * one day: the light-gray bar is that day's trailing 7-day max (rolling window), the
+ * orange bar on top of it is the day's actual value. Both are scaled against the highest
+ * 7-day max in the visible window, so the tallest recent week reaches full height.
  */
-export default function GrowthStaircase({ year, events }: Props) {
+export default function GrowthStaircase({ year, events, label }: Props) {
   const { visibleDays, months, maxScale, columns } = useMemo(() => {
     const columns = weeksInYear(year);
     const valueByDate = new Map(events.map((e) => [e.date, e.value]));
@@ -71,12 +76,31 @@ export default function GrowthStaircase({ year, events }: Props) {
 
   return (
     <svg
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`${-AXIS_GUTTER} 0 ${width + AXIS_GUTTER} ${height}`}
       width="100%"
       style={{ maxWidth: width, height: "auto", display: "block" }}
       role="img"
-      aria-label="Посетители сайта: сегодня против максимума за неделю"
+      aria-label={`${label}: сегодня против максимума за неделю`}
     >
+      <text x={-AXIS_GUTTER + 2} y={LABEL_HEIGHT + 8} fontSize={9} fill="#7d8590" fontFamily="Space Mono, monospace">
+        {numberFmt.format(maxScale)}
+      </text>
+      <text x={-AXIS_GUTTER + 2} y={height - 3} fontSize={9} fill="#7d8590" fontFamily="Space Mono, monospace">
+        0
+      </text>
+      {months
+        .filter((m) => m.weekIndex > 0)
+        .map((m) => (
+          <line
+            key={`sep-${m.label}-${m.weekIndex}`}
+            x1={m.weekIndex * STEP - GAP / 2}
+            x2={m.weekIndex * STEP - GAP / 2}
+            y1={LABEL_HEIGHT}
+            y2={height}
+            stroke="#30363d"
+            strokeWidth={1}
+          />
+        ))}
       {months.map((m) => (
         <text
           key={`${m.label}-${m.weekIndex}`}

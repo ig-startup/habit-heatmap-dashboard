@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { MetricEvent } from "../api";
-import { CELL, STEP } from "./gridConstants";
+import { CELL, GAP, STEP, mondayIndex } from "./gridConstants";
 
 interface Props {
   year: number;
@@ -40,14 +40,14 @@ export default function Heatmap({ year, events, color }: Props) {
   const { weeks, monthPositions, maxValue } = useMemo(() => {
     const valueByDate = new Map(events.map((e) => [e.date, e.value]));
     const start = new Date(Date.UTC(year, 0, 1));
-    // align grid start to the Sunday on/before Jan 1
+    // align grid start to the Monday on/before Jan 1
     const gridStart = new Date(start);
-    gridStart.setUTCDate(gridStart.getUTCDate() - gridStart.getUTCDay());
+    gridStart.setUTCDate(gridStart.getUTCDate() - mondayIndex(gridStart));
     const end = new Date(Date.UTC(year, 11, 31));
 
     const days: { date: string; value: number; inYear: boolean }[] = [];
     const cursor = new Date(gridStart);
-    while (cursor <= end || cursor.getUTCDay() !== 0) {
+    while (cursor <= end || mondayIndex(cursor) !== 0) {
       const iso = cursor.toISOString().slice(0, 10);
       days.push({
         date: iso,
@@ -55,7 +55,7 @@ export default function Heatmap({ year, events, color }: Props) {
         inYear: cursor.getUTCFullYear() === year,
       });
       cursor.setUTCDate(cursor.getUTCDate() + 1);
-      if (cursor > end && cursor.getUTCDay() === 0) break;
+      if (cursor > end && mondayIndex(cursor) === 0) break;
     }
 
     const weeksArr: typeof days[] = [];
@@ -63,15 +63,16 @@ export default function Heatmap({ year, events, color }: Props) {
       weeksArr.push(days.slice(i, i + 7));
     }
 
-    const months: { label: string; weekIndex: number }[] = [];
-    let lastMonth = -1;
-    weeksArr.forEach((week, idx) => {
-      const firstInYearDay = week.find((d) => d.inYear);
-      if (!firstInYearDay) return;
-      const month = new Date(firstInYearDay.date).getUTCMonth();
-      if (month !== lastMonth) {
-        months.push({ label: MONTH_LABELS[month], weekIndex: idx });
-        lastMonth = month;
+    // One entry per month boundary, pinpointing the exact cell (week column + day row)
+    // where the new month starts — a week column can hold the tail of one month and the
+    // start of the next, so the boundary isn't always a clean column edge.
+    const months: { label: string; weekIndex: number; dayRow: number }[] = [];
+    days.forEach((d, i) => {
+      if (!d.inYear) return;
+      const prevInYear = i > 0 && days[i - 1].inYear;
+      const isNewMonth = !prevInYear || new Date(days[i - 1].date).getUTCMonth() !== new Date(d.date).getUTCMonth();
+      if (isNewMonth) {
+        months.push({ label: MONTH_LABELS[new Date(d.date).getUTCMonth()], weekIndex: Math.floor(i / 7), dayRow: i % 7 });
       }
     });
 
@@ -103,6 +104,27 @@ export default function Heatmap({ year, events, color }: Props) {
           {m.label}
         </text>
       ))}
+      {monthPositions.slice(1).map((m) => {
+        const colLeft = m.weekIndex * STEP - GAP / 2;
+        const colRight = colLeft + STEP;
+        const rowTop = 16 + m.dayRow * STEP - GAP / 2;
+        // dayRow 0: the new month starts on a Monday, so the boundary is a plain column
+        // edge. Otherwise it's a staircase: the row above rowTop in this column is still
+        // the old month, so the line steps out to the right edge for those rows.
+        const pathD =
+          m.dayRow === 0
+            ? `M ${colLeft} 16 L ${colLeft} ${height}`
+            : `M ${colRight} 16 L ${colRight} ${rowTop} L ${colLeft} ${rowTop} L ${colLeft} ${height}`;
+        return (
+          <path
+            key={`sep-${m.label}-${m.weekIndex}-${m.dayRow}`}
+            d={pathD}
+            fill="none"
+            stroke="#30363d"
+            strokeWidth={1}
+          />
+        );
+      })}
       {weeks.map((week, wi) =>
         week.map((day, di) => {
           if (!day.inYear) return null;

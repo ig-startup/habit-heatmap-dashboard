@@ -23,8 +23,12 @@ rsync -az --delete \
   -e "$SSH_CMD" \
   ./ "$SERVER_USER@$SERVER_IP:$REMOTE_DIR/"
 
+## Build images one at a time, not in parallel — the production VPS has well under 1GB
+## RAM, and `docker compose build` (or `up --build`) bakes all services concurrently by
+## default, which previously drove the box into a multi-hour swap/CPU meltdown
+## (2026-10-07 incident, see WIKI.md session log).
 $SSH_CMD "$SERVER_USER@$SERVER_IP" \
-  "cd $REMOTE_DIR && docker compose up -d --build"
+  "cd $REMOTE_DIR && docker compose build backend && docker compose build frontend && docker compose up -d"
 
 echo "Deployed. Checking https://fin.garaev.tech/api/metrics ..."
 curl -s -o /dev/null -w "HTTP %{http_code}\n" https://fin.garaev.tech/api/metrics

@@ -17,7 +17,7 @@ class Metric(Base):
     __table_args__ = (
         CheckConstraint("unit IN ('count','duration','boolean')", name="ck_metrics_unit"),
         CheckConstraint("aggregation IN ('sum','max','last')", name="ck_metrics_aggregation"),
-        CheckConstraint("source_type IN ('github','metrika','webhook','manual')", name="ck_metrics_source_type"),
+        CheckConstraint("source_type IN ('github','metrika','ton','webhook','manual')", name="ck_metrics_source_type"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -14,6 +14,7 @@ from app.db import async_session, init_db
 from app.seed_mock import seed_if_empty
 from app.sync_github import sync_github_metric
 from app.sync_metrika import sync_metrika_metric
+from app.sync_ton import sync_ton_metric
 
 load_dotenv()
 
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 GITHUB_SYNC_INTERVAL_SECONDS = int(os.getenv("GITHUB_SYNC_INTERVAL_SECONDS", 3 * 3600))
 METRIKA_SYNC_INTERVAL_SECONDS = int(os.getenv("METRIKA_SYNC_INTERVAL_SECONDS", 3600))
+TON_SYNC_INTERVAL_SECONDS = int(os.getenv("TON_SYNC_INTERVAL_SECONDS", 3600))
 
 
 async def _github_sync_loop(login: str, token: str) -> None:
@@ -53,6 +55,17 @@ async def _metrika_sync_loop(counter_id: str, token: str) -> None:
             logger.exception("Periodic Yandex Metrika sync failed")
 
 
+async def _ton_sync_loop(address: str) -> None:
+    """Re-sync the TON wallet balance on a fixed interval for the lifetime of the process."""
+    while True:
+        await asyncio.sleep(TON_SYNC_INTERVAL_SECONDS)
+        try:
+            async with async_session() as session:
+                await sync_ton_metric(session, address)
+        except Exception:
+            logger.exception("Periodic TON balance sync failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
@@ -79,11 +92,22 @@ async def lifespan(app: FastAPI):
                 logger.exception("Yandex Metrika sync failed at startup")
                 await session.rollback()
 
+    ton_address = os.getenv("TON_WALLET_ADDRESS")
+    if ton_address:
+        async with async_session() as session:
+            try:
+                await sync_ton_metric(session, ton_address)
+            except Exception:
+                logger.exception("TON balance sync failed at startup")
+                await session.rollback()
+
     sync_tasks = []
     if github_token and github_login:
         sync_tasks.append(asyncio.create_task(_github_sync_loop(github_login, github_token)))
     if metrika_token and metrika_counter_id:
         sync_tasks.append(asyncio.create_task(_metrika_sync_loop(metrika_counter_id, metrika_token)))
+    if ton_address:
+        sync_tasks.append(asyncio.create_task(_ton_sync_loop(ton_address)))
 
     logger.info("Habit Heatmap Dashboard API started")
     yield

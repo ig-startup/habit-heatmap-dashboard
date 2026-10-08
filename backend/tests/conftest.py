@@ -7,6 +7,7 @@ os.environ["GITHUB_TOKEN"] = ""
 os.environ["GITHUB_LOGIN"] = ""
 os.environ["YANDEX_METRIKA_TOKEN"] = ""
 os.environ["YANDEX_METRIKA_COUNTER_ID"] = ""
+os.environ["TON_WALLET_ADDRESS"] = ""
 # Fixed test value so tests can exercise the ingest auth check deterministically,
 # instead of picking up the real secret from the repo-root .env.
 os.environ["INGEST_TOKEN"] = "test-ingest-token"

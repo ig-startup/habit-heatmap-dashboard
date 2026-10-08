@@ -1,6 +1,6 @@
 export type Unit = "count" | "duration" | "boolean";
 export type Aggregation = "sum" | "max" | "last";
-export type SourceType = "github" | "metrika" | "webhook" | "manual";
+export type SourceType = "github" | "metrika" | "ton" | "webhook" | "manual";
 
 export interface MetricWithStats {
   id: number;
