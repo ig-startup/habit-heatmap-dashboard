@@ -3,13 +3,14 @@
 set -euo pipefail
 
 AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VENV_DIR="${HABIT_AGENT_VENV:-$HOME/.venvs/habit-heatmap-agent}"  # outside Yandex.Disk sync
 PLIST_NAME="com.igfinance.habit-heatmap-agent.plist"
 DEST="$HOME/Library/LaunchAgents/$PLIST_NAME"
 
 mkdir -p "$AGENT_DIR/logs"
 
 sed \
-  -e "s|__VENV_PYTHON__|$AGENT_DIR/.venv/bin/python3|g" \
+  -e "s|__VENV_PYTHON__|$VENV_DIR/bin/python3|g" \
   -e "s|__AGENT_DIR__|$AGENT_DIR|g" \
   "$AGENT_DIR/launchd/$PLIST_NAME" > "$DEST"
 

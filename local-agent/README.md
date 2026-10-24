@@ -8,8 +8,8 @@ Time) и Telegram (посты в канале). См. ТЗ §2.2–2.3, §4.
 
 ```bash
 cd local-agent
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+python3 -m venv ~/.venvs/habit-heatmap-agent
+~/.venvs/habit-heatmap-agent/bin/pip install -r requirements.txt
 ```
 
 В корневом `.env` (см. `.env.example`) должны быть заданы:
@@ -34,7 +34,7 @@ TELEGRAM_CHANNEL=ilyasgaraev            # username без @, публичный 
 истории канала (проходом по `?before=` до самого начала) — разовый скрипт:
 
 ```bash
-.venv/bin/python3 backfill_telegram.py
+~/.venvs/habit-heatmap-agent/bin/python3 backfill_telegram.py
 ```
 
 Безопасно перезапускать: ingest на бэкенде делает upsert по дате, а не
@@ -47,7 +47,7 @@ TELEGRAM_CHANNEL=ilyasgaraev            # username без @, публичный 
 открывается только через **Full Disk Access**, а это не узкое разрешение
 «только на этот файл» — это доступ ко всему, что TCC защищает на диске
 (Mail, Messages, история Safari, контейнеры других приложений и т.д.), причём
-выдаётся он **конкретному бинарнику интерпретатора** (`local-agent/.venv/bin/python3.13`,
+выдаётся он **конкретному бинарнику интерпретатора** (`~/.venvs/habit-heatmap-agent/bin/python3`,
 который обычно является symlink на системный python), а не только этому
 скрипту. Если тот же системный python используется другими venv/проектами —
 они тоже получат FDA.
@@ -56,7 +56,7 @@ TELEGRAM_CHANNEL=ilyasgaraev            # username без @, публичный 
 1. Рассмотреть выделенный python-интерпретатор только для `local-agent`
    (например через `pyenv`), чтобы FDA не расползался на другие проекты
 2. System Settings → Privacy & Security → Full Disk Access → добавить бинарник
-   (точный путь: `local-agent/.venv/bin/python3 -c "import sys; print(sys.executable)"`)
+   (точный путь: `~/.venvs/habit-heatmap-agent/bin/python3 -c "import sys; print(sys.executable)"`)
 3. В `.env` выставить `YOUTUBE_COLLECTOR_ENABLED=true`
 4. Перезапустить агент
 
@@ -66,7 +66,7 @@ TELEGRAM_CHANNEL=ilyasgaraev            # username без @, публичный 
 ## Ручной запуск (для проверки)
 
 ```bash
-.venv/bin/python3 agent.py
+~/.venvs/habit-heatmap-agent/bin/python3 agent.py
 ```
 
 ## Автозапуск по расписанию (launchd, каждые 2 часа)
@@ -80,7 +80,7 @@ TELEGRAM_CHANNEL=ilyasgaraev            # username без @, публичный 
 ## Тесты
 
 ```bash
-.venv/bin/pytest -q
+~/.venvs/habit-heatmap-agent/bin/pytest -q
 ```
 
 Obsidian- и Telegram-коллекторы покрыты тестами (детерминированная логика:

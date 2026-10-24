@@ -66,9 +66,9 @@ local-agent/     — демон на Mac: сбор Obsidian/YouTube/Telegram, п
 
 ## Тесты
 
-`cd backend && .venv/bin/pytest` — 13 тестов (метрики, streak, heatmap, upsert,
+`cd backend && ~/.venvs/habit-heatmap-backend/bin/pytest` — 13 тестов (метрики, streak, heatmap, upsert,
 GitHub-синк, ingest-эндпоинт с auth).
-`cd local-agent && .venv/bin/pytest` — 10 тестов: 5 Obsidian-коллектора (word-count
+`cd local-agent && ~/.venvs/habit-heatmap-agent/bin/pytest` — 10 тестов: 5 Obsidian-коллектора (word-count
 delta, baseline-логика), 5 Telegram-коллектора (парсинг HTML, пагинация, group-by-day).
 YouTube-коллектор тестируется только вручную (нужен реальный `knowledgeC.db` +
 Full Disk Access).
