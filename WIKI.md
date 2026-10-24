@@ -1,11 +1,7 @@
-# Wiki
+# Wiki проекта
 
-База знаний проекта находится в Obsidian Vault:
+База знаний (Obsidian): `~/Yandex.Disk.localized/998 Vault-Obsidian/02 База знаний — Стартапы/019-17 habit-heatmap-dashboard/`
 
-```
-~/Yandex.Disk.localized/998 Vault-Obsidian/02 База знаний — Стартапы/019-17 habit-heatmap-dashboard/
-```
-
-Читать при старте сессии:
-- `index.md` — обзор проекта
-- `текущие приоритеты.md` — бэклог и фокус
+На старте сессии читать `status.md` и `backlog.md` — больше ничего.
+Грабли и решения — `knowledge/` (искать grep'ом по необходимости).
+Структура вики и что обновлять в конце сессии — `~/.claude/CLAUDE.md`, раздел «Вики».
