@@ -15,6 +15,9 @@ services:
     restart: unless-stopped
 
   backend:
+    # На проде образ собирает GitHub Actions (ghcr.io), сервер его только скачивает.
+    # Локально `docker compose up --build` собирает из ./backend под тем же именем.
+    image: ghcr.io/ig-startup/habit-heatmap-dashboard-backend:${IMAGE_TAG:-latest}
     build: ./backend
     environment:
       DATABASE_URL: postgresql+asyncpg://habits:${POSTGRES_PASSWORD:-habits}@db:5432/habits
@@ -33,6 +36,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ghcr.io/ig-startup/habit-heatmap-dashboard-frontend:${IMAGE_TAG:-latest}
     build: ./frontend
     depends_on:
       - backend

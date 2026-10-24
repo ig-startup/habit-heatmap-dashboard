@@ -1,0 +1,4 @@
+#!/bin/sh
+# Принудительная команда для ключа CI в /home/deploy/.ssh/authorized_keys.
+# Что бы ни прислал клиент, запускается только habit-deploy; присланное — его аргумент (sha проверяется там).
+exec sudo -n /usr/local/bin/habit-deploy "$SSH_ORIGINAL_COMMAND"
