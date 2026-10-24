@@ -55,6 +55,27 @@ async def upsert_event(session: AsyncSession, metric_id: int, data: MetricEventC
     return event
 
 
+async def get_metric_by_source_type(session: AsyncSession, source_type: str) -> Metric | None:
+    result = await session.execute(select(Metric).where(Metric.source_type == source_type))
+    return result.scalars().first()
+
+
+async def find_metric_by_slug(session: AsyncSession, slug: str) -> Metric | None:
+    """Look up a webhook-sourced metric by meta.slug without creating it (read-only)."""
+    result = await session.execute(select(Metric).where(Metric.source_type == "webhook"))
+    for metric in result.scalars().all():
+        if metric.meta.get("slug") == slug:
+            return metric
+    return None
+
+
+async def all_events(session: AsyncSession, metric_id: int) -> list[MetricEvent]:
+    result = await session.execute(
+        select(MetricEvent).where(MetricEvent.metric_id == metric_id).order_by(MetricEvent.date)
+    )
+    return list(result.scalars().all())
+
+
 async def events_for_year(session: AsyncSession, metric_id: int, year: int) -> list[MetricEvent]:
     result = await session.execute(
         select(MetricEvent)
