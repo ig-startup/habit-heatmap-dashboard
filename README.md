@@ -27,8 +27,8 @@ docker compose up --build
 ```bash
 # backend
 cd backend
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-DATABASE_URL="sqlite+aiosqlite:////tmp/habits_dev.db" .venv/bin/uvicorn app.main:app --reload --port 8000
+python3 -m venv ~/.venvs/habit-heatmap-backend && ~/.venvs/habit-heatmap-backend/bin/pip install -r requirements.txt
+DATABASE_URL="sqlite+aiosqlite:////tmp/habits_dev.db" ~/.venvs/habit-heatmap-backend/bin/uvicorn app.main:app --reload --port 8000
 
 # frontend (в отдельном терминале)
 cd frontend
@@ -42,7 +42,7 @@ npm run dev
 
 ```bash
 cd backend
-.venv/bin/pytest
+~/.venvs/habit-heatmap-backend/bin/pytest
 ```
 
 ## Модель данных
