@@ -43,6 +43,39 @@ export function fetchHeatmap(metricId: number, year: number): Promise<MetricEven
   return request<MetricEvent[]>(`/metrics/${metricId}/heatmap?year=${year}`);
 }
 
+export interface CompetitionDailyPoint {
+  date: string;
+  value: number;
+  points: number;
+}
+
+export interface CompetitionWeekPoint {
+  week_start: string;
+  raw_total: number;
+  points_total: number;
+}
+
+export interface CompetitionPlayer {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  metric_found: boolean;
+  daily: CompetitionDailyPoint[];
+  weekly: CompetitionWeekPoint[];
+  cumulative_points: number;
+}
+
+export interface CompetitionOut {
+  start_date: string;
+  weeks: number;
+  players: CompetitionPlayer[];
+}
+
+export function fetchCompetition(): Promise<CompetitionOut> {
+  return request<CompetitionOut>("/competition");
+}
+
 export interface CreateMetricInput {
   name: string;
   icon: string;

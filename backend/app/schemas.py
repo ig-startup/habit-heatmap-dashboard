@@ -55,3 +55,32 @@ class MetricEventOut(BaseModel):
     date: date
     value: float
     meta: dict
+
+
+class CompetitionDailyPoint(BaseModel):
+    date: date
+    value: float
+    points: float
+
+
+class CompetitionWeekPoint(BaseModel):
+    week_start: date
+    raw_total: float
+    points_total: float
+
+
+class CompetitionPlayer(BaseModel):
+    id: str
+    label: str
+    icon: str
+    color: str
+    metric_found: bool
+    daily: list[CompetitionDailyPoint]
+    weekly: list[CompetitionWeekPoint]
+    cumulative_points: float
+
+
+class CompetitionOut(BaseModel):
+    start_date: date
+    weeks: int
+    players: list[CompetitionPlayer]

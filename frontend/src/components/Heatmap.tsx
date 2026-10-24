@@ -7,6 +7,8 @@ interface Props {
   year: number;
   events: MetricEvent[];
   color: string;
+  /** Optional fixed range: `weeks` Monday-aligned columns starting at `startDate` (a Monday, YYYY-MM-DD) instead of the whole `year`. */
+  range?: { startDate: string; weeks: number };
 }
 
 const MONTH_LABELS = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
@@ -34,16 +36,24 @@ function withOpacity(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-export default function Heatmap({ year, events, color }: Props) {
+export default function Heatmap({ year, events, color, range }: Props) {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const { weeks, monthPositions, maxValue } = useMemo(() => {
     const valueByDate = new Map(events.map((e) => [e.date, e.value]));
-    const start = new Date(Date.UTC(year, 0, 1));
-    // align grid start to the Monday on/before Jan 1
-    const gridStart = new Date(start);
-    gridStart.setUTCDate(gridStart.getUTCDate() - mondayIndex(gridStart));
-    const end = new Date(Date.UTC(year, 11, 31));
+    let gridStart: Date;
+    let end: Date;
+    if (range) {
+      gridStart = new Date(`${range.startDate}T00:00:00Z`);
+      end = new Date(gridStart);
+      end.setUTCDate(end.getUTCDate() + range.weeks * 7 - 1);
+    } else {
+      const start = new Date(Date.UTC(year, 0, 1));
+      // align grid start to the Monday on/before Jan 1
+      gridStart = new Date(start);
+      gridStart.setUTCDate(gridStart.getUTCDate() - mondayIndex(gridStart));
+      end = new Date(Date.UTC(year, 11, 31));
+    }
 
     const days: { date: string; value: number; inYear: boolean }[] = [];
     const cursor = new Date(gridStart);
@@ -52,7 +62,7 @@ export default function Heatmap({ year, events, color }: Props) {
       days.push({
         date: iso,
         value: valueByDate.get(iso) ?? 0,
-        inYear: cursor.getUTCFullYear() === year,
+        inYear: range ? true : cursor.getUTCFullYear() === year,
       });
       cursor.setUTCDate(cursor.getUTCDate() + 1);
       if (cursor > end && mondayIndex(cursor) === 0) break;
@@ -79,7 +89,7 @@ export default function Heatmap({ year, events, color }: Props) {
     const max = Math.max(0, ...events.map((e) => e.value));
 
     return { weeks: weeksArr, monthPositions: months, maxValue: max };
-  }, [year, events]);
+  }, [year, events, range?.startDate, range?.weeks]);
 
   const width = weeks.length * STEP;
   const height = 7 * STEP + 16;

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.competition import router as competition_router
 from app.api.metrics import router as metrics_router
 from app.db import async_session, init_db
 from app.seed_mock import seed_if_empty
@@ -128,6 +129,7 @@ app.add_middleware(
 )
 
 app.include_router(metrics_router)
+app.include_router(competition_router)
 
 
 @app.get("/health")
