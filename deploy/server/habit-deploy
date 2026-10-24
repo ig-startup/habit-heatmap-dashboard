@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Деплой habit-heatmap на sites-prod: скачать образы коммита из ghcr.io, перезапустить,
+# проверить /api/metrics, при сбое вернуть прежнюю версию.
+# Цепочка: GitHub Actions → ssh deploy@sites-prod <sha> → habit-deploy-ssh → sudo habit-deploy <sha>.
+# Ставится руками, см. deploy/server/README.md. Сервер ничего не собирает — памяти <1 ГБ.
+set -euo pipefail
+
+SHA="${1:-}"
+[[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "habit-deploy: нужен полный sha коммита" >&2; exit 2; }
+
+APP=/opt/habit-heatmap-dashboard
+REPO=ig-startup/habit-heatmap-dashboard
+
+exec 9>/run/habit-deploy.lock
+flock -n 9 || { echo "habit-deploy: деплой уже идёт" >&2; exit 3; }
+
+cd "$APP"
+PORT=$(grep -E '^WEB_PORT=' .env | cut -d= -f2 || true)
+PORT=${PORT:-5180}
+PREV=$(cat .deployed 2>/dev/null || echo latest)
+
+healthy() {
+  for _ in $(seq 1 12); do
+    curl -fs -o /dev/null --max-time 5 "http://127.0.0.1:${PORT}/api/metrics" && return 0
+    sleep 5
+  done
+  return 1
+}
+
+# compose-файл этой версии берём из GitHub (репо публичный); .env на сервере не трогаем
+curl -fsSL "https://raw.githubusercontent.com/${REPO}/${SHA}/docker-compose.yml" -o docker-compose.yml.new
+cp docker-compose.yml docker-compose.yml.prev
+
+if ! IMAGE_TAG="$SHA" docker compose -f docker-compose.yml.new pull --quiet backend frontend; then
+  rm -f docker-compose.yml.new
+  echo "habit-deploy: не удалось скачать образы ${SHA} — ничего не меняли" >&2
+  exit 4
+fi
+
+mv docker-compose.yml.new docker-compose.yml
+IMAGE_TAG="$SHA" docker compose up -d --no-build --remove-orphans
+
+if healthy; then
+  echo "$SHA" > .deployed
+  docker image prune -f >/dev/null
+  echo "habit-deploy: OK ${SHA}"
+  exit 0
+fi
+
+echo "habit-deploy: /api/metrics не отвечает — откат на ${PREV}" >&2
+mv docker-compose.yml.prev docker-compose.yml
+IMAGE_TAG="$PREV" docker compose up -d --no-build --remove-orphans
+healthy && echo "habit-deploy: откат удался" >&2 || echo "habit-deploy: откат тоже не поднялся!" >&2
+exit 1

@@ -73,3 +73,10 @@ delta, baseline-логика), 5 Telegram-коллектора (парсинг H
 YouTube-коллектор тестируется только вручную (нужен реальный `knowledgeC.db` +
 Full Disk Access).
 Frontend-тестов нет — MVP проверялся вручную в браузере (playwright screenshot).
+
+## Деплой
+
+Прод — fin.garaev.tech на sites-prod (80.71.152.161). **Только через GitHub Actions**: мёрж в `main` →
+тесты → образы в ghcr.io → `habit-deploy <sha>` на сервере (проверка `/api/metrics`, откат при сбое).
+Сервер образы не собирает. Подробности и установка серверных скриптов — `deploy/server/README.md`.
+`scripts/deploy.sh` отключён.

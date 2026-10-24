@@ -3,6 +3,13 @@
 # Does NOT touch the server's .env — it has its own POSTGRES_PASSWORD/CORS_ORIGINS/WEB_PORT
 # that must never be overwritten by the local .env (see 2026-09-05 incident).
 set -euo pipefail
+
+# Деплой теперь только через GitHub Actions (мёрж в main) — см. deploy/server/README.md.
+# Этот скрипт собирает образы на сервере и оставлен лишь как история; запуск — только осознанно.
+if [ "${I_KNOW_THIS_BUILDS_ON_SERVER:-}" != 1 ]; then
+  echo "Деплой — через GitHub Actions (мёрж в main). См. deploy/server/README.md" >&2
+  exit 1
+fi
 cd "$(dirname "$0")/.."
 
 set -a; source .env; set +a
