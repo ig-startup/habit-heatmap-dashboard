@@ -42,6 +42,9 @@ IMAGE_TAG="$SHA" docker compose up -d --no-build --remove-orphans
 
 if healthy; then
   echo "$SHA" > .deployed
+  # Каждый деплой — ~400 МБ образов; держим только текущую версию и предыдущую (для отката)
+  docker images --format '{{.Repository}}:{{.Tag}}' | grep '^ghcr.io/ig-startup/habit-heatmap-dashboard-' \
+    | grep -vE ":(${SHA}|${PREV})$" | xargs -r docker rmi >/dev/null 2>&1 || true
   docker image prune -f >/dev/null
   echo "habit-deploy: OK ${SHA}"
   exit 0
