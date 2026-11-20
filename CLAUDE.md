@@ -21,7 +21,10 @@
   (`source_type=webhook`, `meta.slug`). Защищён shared-secret заголовком
   `X-Ingest-Token` (`INGEST_TOKEN` в `.env`) — обязателен всегда, без токена
   ingest недоступен (fail-closed).
-- Данные шлёт локальный агент-демон на Mac (`local-agent/`, launchd, каждые 2 часа):
+- Данные шлёт локальный агент-демон на Mac (`local-agent/`, launchd: каждые 30 мин
+  + при смене сети через `WatchPaths /var/run/resolv.conf`). Всё собранное сначала
+  пишется в `local-agent/state/outbox.json` и удаляется только после ответа бэкенда —
+  прогон без сети (сразу после сна) не теряет данные, а досылает их позже:
   Obsidian — word-count дельта по папке `Статьи` (не весь vault); YouTube — время
   на youtube.com из `knowledgeC.db` (macOS Screen Time), требует Full Disk Access.
   iPhone-часть через `aw-import-screentime` — не сделана (см. `local-agent/README.md`).
@@ -68,8 +71,9 @@ local-agent/     — демон на Mac: сбор Obsidian/YouTube/Telegram, п
 
 `cd backend && ~/.venvs/habit-heatmap-backend/bin/pytest` — 13 тестов (метрики, streak, heatmap, upsert,
 GitHub-синк, ingest-эндпоинт с auth).
-`cd local-agent && ~/.venvs/habit-heatmap-agent/bin/pytest` — 10 тестов: 5 Obsidian-коллектора (word-count
-delta, baseline-логика), 5 Telegram-коллектора (парсинг HTML, пагинация, group-by-day).
+`cd local-agent && ~/.venvs/habit-heatmap-agent/bin/pytest` — 19 тестов: Obsidian-коллектор (word-count
+delta, baseline-логика), Telegram-коллектор (парсинг HTML, пагинация, group-by-day),
+outbox (досылка после сбоя, ретраи, без дублей).
 YouTube-коллектор тестируется только вручную (нужен реальный `knowledgeC.db` +
 Full Disk Access).
 Frontend-тестов нет — MVP проверялся вручную в браузере (playwright screenshot).

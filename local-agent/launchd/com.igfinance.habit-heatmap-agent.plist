@@ -15,7 +15,15 @@
     <string>__AGENT_DIR__</string>
 
     <key>StartInterval</key>
-    <integer>7200</integer>
+    <integer>1800</integer>
+
+    <!-- resolv.conf is rewritten when the network comes up/changes (e.g. after
+         wake from sleep) — run then, so queued values are sent as soon as
+         there is internet. -->
+    <key>WatchPaths</key>
+    <array>
+        <string>/var/run/resolv.conf</string>
+    </array>
 
     <key>RunAtLoad</key>
     <true/>
