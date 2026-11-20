@@ -1,6 +1,9 @@
 """Local agent daemon — collects Obsidian + YouTube + Telegram activity and pushes it to the backend.
 
-Meant to run periodically (see launchd/agent.plist), e.g. every 2 hours.
+Meant to run periodically (see launchd/agent.plist): every 30 minutes and whenever
+the network changes. Collected values go to a durable outbox (state/outbox.json)
+and are re-sent on later runs until the backend accepts them, so a run without
+network delays data instead of losing it.
 Configuration is read from the repo-root .env: BACKEND_URL, INGEST_TOKEN,
 OBSIDIAN_ARTICLES_PATH, TELEGRAM_CHANNEL.
 
@@ -20,6 +23,7 @@ from dotenv import load_dotenv
 from collectors.obsidian import collect_words_written_today
 from collectors.telegram import collect_recent_post_counts
 from collectors.youtube import collect_youtube_seconds_today
+from outbox import Outbox
 
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
@@ -36,30 +40,31 @@ OBSIDIAN_ARTICLES_PATH = os.getenv("OBSIDIAN_ARTICLES_PATH", "")
 YOUTUBE_COLLECTOR_ENABLED = os.getenv("YOUTUBE_COLLECTOR_ENABLED", "false").lower() == "true"
 TELEGRAM_CHANNEL = os.getenv("TELEGRAM_CHANNEL", "")
 STATE_PATH = Path(__file__).resolve().parent / "state" / "obsidian.json"
+# Values are queued here first and removed only after the backend confirms them.
+OUTBOX_PATH = Path(__file__).resolve().parent / "state" / "outbox.json"
+FLUSH_RETRIES = 4
+FLUSH_RETRY_DELAY_SECONDS = 30
 
 
-def _ingest(slug: str, value: float, event_date: date | None = None) -> None:
-    if not INGEST_TOKEN:
-        logger.error("INGEST_TOKEN not set — skipping %s ingest", slug)
-        return
-    try:
-        response = httpx.post(
-            f"{BACKEND_URL}/api/metrics/{slug}/ingest",
-            json={"date": (event_date or date.today()).isoformat(), "value": value},
-            headers={"X-Ingest-Token": INGEST_TOKEN},
-            timeout=10,
-        )
-        response.raise_for_status()
-        logger.info("%s: ingested value=%s date=%s", slug, value, event_date or date.today())
-    except httpx.HTTPError:
-        logger.exception("%s: ingest failed", slug)
+def _send(slug: str, day: str, value: float) -> None:
+    """Push one value to the backend; raises on any failure (network, 5xx, auth)."""
+    response = httpx.post(
+        f"{BACKEND_URL}/api/metrics/{slug}/ingest",
+        json={"date": day, "value": value},
+        headers={"X-Ingest-Token": INGEST_TOKEN},
+        timeout=10,
+    )
+    response.raise_for_status()
+    logger.info("%s: ingested value=%s date=%s", slug, value, day)
 
 
 def run_once() -> None:
+    outbox = Outbox(OUTBOX_PATH)
+
     vault_path = Path(OBSIDIAN_ARTICLES_PATH) if OBSIDIAN_ARTICLES_PATH else None
     if vault_path and vault_path.exists():
         words = collect_words_written_today(vault_path, STATE_PATH)
-        _ingest("obsidian", words)
+        outbox.put("obsidian", date.today().isoformat(), words)
     else:
         logger.error("OBSIDIAN_ARTICLES_PATH not set or missing: %s", OBSIDIAN_ARTICLES_PATH)
 
@@ -68,20 +73,25 @@ def run_once() -> None:
     else:
         try:
             seconds = collect_youtube_seconds_today()
-            _ingest("youtube", round(seconds / 60, 1))
+            outbox.put("youtube", date.today().isoformat(), round(seconds / 60, 1))
         except Exception:
             logger.exception("YouTube collector failed — is Full Disk Access granted to this Python?")
 
     if not TELEGRAM_CHANNEL:
         logger.info("TELEGRAM_CHANNEL not set — skipping Telegram collector")
-        return
+    else:
+        try:
+            counts = collect_recent_post_counts(TELEGRAM_CHANNEL)
+            for day_str, count in counts.items():
+                outbox.put("telegram", day_str, count)
+        except Exception:
+            logger.exception("Telegram collector failed")
 
-    try:
-        counts = collect_recent_post_counts(TELEGRAM_CHANNEL)
-        for day_str, count in counts.items():
-            _ingest("telegram", count, event_date=date.fromisoformat(day_str))
-    except Exception:
-        logger.exception("Telegram collector failed")
+    if not INGEST_TOKEN:
+        logger.error("INGEST_TOKEN not set — values stay in the outbox until it is")
+        return
+    # Right after wake-up the network may need a minute — retry a few times before giving up.
+    outbox.flush(_send, retries=FLUSH_RETRIES, retry_delay=FLUSH_RETRY_DELAY_SECONDS)
 
 
 if __name__ == "__main__":
